@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <unistd.h>
 
 #include <sys/types.h> 
@@ -15,98 +14,75 @@
 #define FW true //dopředu
 #define BW false //dozadu
 
-void motorLeft(unsigned char, bool);
-void motorRight(unsigned char, bool);
-
-void goForward(unsigned char);
-void turnLeft(unsigned char);
-void turnRight(unsigned char);
-void goBack(unsigned char);
-void STOP();
-
-void fw(unsigned char, unsigned char); //go forwards with possible turning
-void bw(unsigned char, unsigned char); //go backwards with possible turning
-
 unsigned char speednow = 50;
 
+void motorRight(unsigned char value, bool dir = FW) {
+	if(dir == FW)
+		digitalWrite(23, LOW);
+	else
+		digitalWrite(23, HIGH);
+    
+	if(dir == FW) {
+		if(value == 0)
+			softPwmWrite(24, 0);
+		else      
+			softPwmWrite(24, value*0.94); 
+	}
+	else
+		softPwmWrite(24, (100 - value)*0.94); //reverse value so 0 stays min and 100 stays max
+}
+
+void motorLeft(unsigned char value, bool dir = FW) {
+	if(dir == FW)
+		digitalWrite(21, LOW);
+	else
+		digitalWrite(21, HIGH);
+
+	if(dir == FW) {
+		if(value == 0)
+			softPwmWrite(22, 0);
+		else      
+			softPwmWrite(22, value);
+	}
+	else
+		softPwmWrite(22, 100 - value); //reverse value so 0 stays min and 100 stays max
+}
+
 void STOP() {
- 
- motorLeft(0, FW);
- motorRight(0, FW);
-  
+	motorLeft(0, FW);
+	motorRight(0, FW);
 }
 
 void turnRight(unsigned char pwm) {
-  
- motorRight(0, FW);
-motorLeft(pwm, FW); 
-  
+	motorRight(0, FW);
+	motorLeft(pwm, FW); 
 }
 
 void turnLeft(unsigned char pwm) {
-  
- motorLeft(0, FW);
- motorRight(pwm, FW); 
-  
+	motorLeft(0, FW);
+	motorRight(pwm, FW); 
 }
 
 void goForward(unsigned char pwm) {
- 
- motorLeft(pwm, FW);
- motorRight(pwm, FW);
-  
-}
-
-void motorRight(unsigned char value, bool dir = FW) {
-    if(dir == FW)
-      digitalWrite(23, LOW);
-    else
-      digitalWrite(23, HIGH);
-    
-    if(dir == FW) {
-      if(value == 0)
-		softPwmWrite(24, 0);
-      else      
-        softPwmWrite(24, value*0.94); 
-    }
-    else
-      softPwmWrite(24, (100 - value)*0.94); //reverse value so 0 stays min and 100 stays max
-}
-void motorLeft(unsigned char value, bool dir = FW) {
-    if(dir == FW)
-      digitalWrite(21, LOW);
-    else
-      digitalWrite(21, HIGH);
-    
-    if(dir == FW) {
-      if(value == 0)
-        softPwmWrite(22, 0);
-      else      
-        softPwmWrite(22, value);
-    }
-    else
-      softPwmWrite(22, 100 - value); //reverse value so 0 stays min and 100 stays max
+	motorLeft(pwm, FW);
+	motorRight(pwm, FW);
 }
 
 void goBack (unsigned char pwm) {
-  digitalWrite(21, HIGH);//left
-  softPwmWrite(22, 100-pwm);
-  digitalWrite(23, HIGH);//right
-  softPwmWrite(24, 100-pwm*0.94);
+	digitalWrite(21, HIGH);//left
+	softPwmWrite(22, 100-pwm);
+	digitalWrite(23, HIGH);//right
+	softPwmWrite(24, 100-pwm*0.94);
 }
 
 void fw(unsigned char l, unsigned char r) {
- 
- motorLeft(l, FW);
- motorRight(r, FW);
-  
+	motorLeft(l, FW);
+	motorRight(r, FW);
 }
 
 void bw(unsigned char l, unsigned char r){
-  
-  motorLeft(l, BW);
-  motorRight(r, BW);
-  
+	motorLeft(l, BW);
+	motorRight(r, BW);
 }
 
 int main(int argc, char *argv[]) {
@@ -166,7 +142,6 @@ int main(int argc, char *argv[]) {
 			}		
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
 				printf("message: %c\n", message);
-			
 				switch(message){
 					case 'X': system("python3 /home/pi/programy/webcamera.py &"); break;
 					case 'x': system("pkill -15 -f ""webcamera.py"""); break;
@@ -208,7 +183,6 @@ int main(int argc, char *argv[]) {
 						if(speednow >=5)
 							speednow -= 5;
 						break;
-      
 				}//end of switch
 				if(disconnect == 1) {
 					printf("disconnecting now...\n");break;
@@ -219,10 +193,8 @@ int main(int argc, char *argv[]) {
 			send(client_socket, speednow_string, n, 0);
 			delay(100);	
 		}//end of control loop
-		
 		close(client_socket);
 		printf("client socket closed.\n");
-		
-	}
+	}//end of network loop
 	return 0;
 }
