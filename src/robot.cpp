@@ -26,10 +26,10 @@ void motorRight(unsigned char value, bool dir = FW) {
 		if(value == 0)
 			softPwmWrite(24, 0);
 		else      
-			softPwmWrite(24, value*0.94); 
+			softPwmWrite(24, value); 
 	}
 	else
-		softPwmWrite(24, (100 - value)*0.94); //reverse value so 0 stays min and 100 stays max
+		softPwmWrite(24, (100 - value)); //reverse value so 0 stays min and 100 stays max
 }
 
 void motorLeft(unsigned char value, bool dir = FW) {
@@ -72,7 +72,7 @@ void goBack (unsigned char pwm) {
 	digitalWrite(21, HIGH);//left
 	softPwmWrite(22, 100-pwm);
 	digitalWrite(23, HIGH);//right
-	softPwmWrite(24, 100-pwm*0.94);
+	softPwmWrite(24, 100-pwm);
 }
 
 void fw(unsigned char l, unsigned char r) {
