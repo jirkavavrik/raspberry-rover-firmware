@@ -16,6 +16,8 @@
 
 unsigned char speednow = 50;
 
+int client_socket;
+
 void motorRight(unsigned char value, bool dir = FW) {
 	if(dir == FW)
 		digitalWrite(23, LOW);
@@ -42,10 +44,10 @@ void motorLeft(unsigned char value, bool dir = FW) {
 		if(value == 0)
 			softPwmWrite(22, 0);
 		else      
-			softPwmWrite(22, value);
+			softPwmWrite(22, value*0.9);
 	}
 	else
-		softPwmWrite(22, 100 - value); //reverse value so 0 stays min and 100 stays max
+		softPwmWrite(22, 100 - value*0.9); //reverse value so 0 stays min and 100 stays max
 }
 
 void STOP() {
@@ -70,7 +72,7 @@ void goForward(unsigned char pwm) {
 
 void goBack (unsigned char pwm) {
 	digitalWrite(21, HIGH);//left
-	softPwmWrite(22, 100-pwm);
+	softPwmWrite(22, 100-pwm*0.9);
 	digitalWrite(23, HIGH);//right
 	softPwmWrite(24, 100-pwm);
 }
@@ -85,6 +87,13 @@ void bw(unsigned char l, unsigned char r){
 	motorRight(r, BW);
 }
 
+void shutdown() {
+	STOP();
+	close(client_socket);
+	printf("client socket closed.\n");
+	system("sudo shutdown -h now &");
+}
+
 int main(int argc, char *argv[]) {
 	wiringPiSetup();
 	
@@ -97,9 +106,10 @@ int main(int argc, char *argv[]) {
 	softPwmCreate (24, 0, 100);
 	
 	//shutdown button
-	pinMode(29, INPUT);
-	pullUpDnControl (29, PUD_UP);
-	int shutdownButton;
+	wiringPiISR (29, INT_EDGE_FALLING,  shutdown) ;
+	//pinMode(29, INPUT);
+	//pullUpDnControl (29, PUD_UP);
+	//int shutdownButton;
 	
 	int server_socket, client_socket, portno;
 	int disconnect = 0;
@@ -135,11 +145,6 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr, "ERROR on accept");
 	
 		while(true) {//control loop
-			shutdownButton = digitalRead(29);
-			if(shutdownButton == LOW) {
-				system("sudo shutdown -h now &");
-				break;
-			}		
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
 				printf("message: %c\n", message);
 				switch(message){
