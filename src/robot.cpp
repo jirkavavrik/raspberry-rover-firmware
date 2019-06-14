@@ -106,10 +106,9 @@ int main(int argc, char *argv[]) {
 	softPwmCreate (24, 0, 100);
 	
 	//shutdown button
+	pinMode(29, INPUT);
+	pullUpDnControl (29, PUD_UP);
 	wiringPiISR (29, INT_EDGE_FALLING,  shutdown) ;
-	//pinMode(29, INPUT);
-	//pullUpDnControl (29, PUD_UP);
-	//int shutdownButton;
 	
 	int server_socket, client_socket, portno;
 	int disconnect = 0;
