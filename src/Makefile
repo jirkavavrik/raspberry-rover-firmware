@@ -3,11 +3,11 @@
 # Date:		  10. 8. 2019
 
 CC=g++
-FLAGS=`sdl2-config --cflags --libs`
+FLAGS=-lwiringPi -lpthread
 EXE=robot
 
 main: robot.cpp
-	$(CC) robotl.cpp $(FLAGS) -o $(EXE)
+	$(CC) robot.cpp $(FLAGS) -o $(EXE)
 
 run:
 	./$(EXE)
