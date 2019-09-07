@@ -1,6 +1,7 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 #include <softPwm.h>
+#include <ads1115.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,10 @@
 unsigned char speednow = 50;
 
 int client_socket;
+
+int adc0input;
+float batteryVoltage;
+FILE *voltageFile;//
 
 void motorRight(unsigned char value, bool dir = FW) {
 	if(dir == FW)
@@ -96,6 +101,9 @@ void shutdown() {
 
 int main(int argc, char *argv[]) {
 	wiringPiSetup();
+
+	ads1115Setup (120, 0x48);
+	digitalWrite(120,ADS1115_GAIN_4);
 	
 	//H-bridge pins
 	pinMode(21, OUTPUT);
@@ -192,9 +200,16 @@ int main(int argc, char *argv[]) {
 					printf("disconnecting now...\n");break;
 				}			
 			}//end of if recv
-			char speednow_string[3];
-			int n = sprintf(speednow_string, "%i", speednow);
-			send(client_socket, speednow_string, n, 0);
+
+			adc0input = analogRead(120); //read the ads1115
+			batteryVoltage = adc0input/1600.0f; //convert the value to Volts ( /8 to convert the value to mV , /1000 to convert it to Volts and *5 to get value in front of the voltage divider)
+			voltageFile  = fopen("/var/ramdrive/v.txt", "w");
+			fprintf(voltageFile, "%f", batteryVoltage);
+			fclose(voltageFile);
+
+			char voltageString[10];
+			int n = sprintf(voltageString, "%f", batteryVoltage);
+			send(client_socket, voltageString, n, 0);
 			delay(100);	
 		}//end of control loop
 		close(client_socket);
