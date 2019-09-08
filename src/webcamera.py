@@ -4,6 +4,9 @@ import logging
 import socketserver
 from threading import Condition
 from http import server
+import datetime as dt
+from picamera import PiCamera
+from picamera import Color
 
 PAGE="""\
 <html>
@@ -80,10 +83,23 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
 with picamera.PiCamera(resolution='640x480', framerate=24) as camera:
     output = StreamingOutput()
     camera.rotation = 180
+    camera.annotate_text_size = 16
+    camera.annotate_foreground = Color('white')
+    camera.annotate_background = Color('black')
     camera.start_recording(output, format='mjpeg')
     try:
         address = ('', 8080)
         server = StreamingServer(address, StreamingHandler)
-        server.serve_forever()
+        #server.serve_forever()
+        server.timeout = 1
+        while True:
+            server.handle_request()
+            f=open("/var/ramdrive/v.txt", "r")
+            if f.mode == 'r':
+                contents = f.read()
+                camera.annotate_text = dt.datetime.now().strftime('%Y/%m/%d %H:%M:%S') + ", battery: " + contents + " V"
+            f.close()
+            #camera.wait_recording(0.2)
+        
     finally:
         camera.stop_recording()

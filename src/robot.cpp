@@ -204,11 +204,11 @@ int main(int argc, char *argv[]) {
 			adc0input = analogRead(120); //read the ads1115
 			batteryVoltage = adc0input/1600.0f; //convert the value to Volts ( /8 to convert the value to mV , /1000 to convert it to Volts and *5 to get value in front of the voltage divider)
 			voltageFile  = fopen("/var/ramdrive/v.txt", "w");
-			fprintf(voltageFile, "%f", batteryVoltage);
+			fprintf(voltageFile, "%.2f", batteryVoltage);
 			fclose(voltageFile);
 
 			char voltageString[10];
-			int n = sprintf(voltageString, "%f", batteryVoltage);
+			int n = sprintf(voltageString, "%.2f", batteryVoltage);
 			send(client_socket, voltageString, n, 0);
 			delay(100);	
 		}//end of control loop
