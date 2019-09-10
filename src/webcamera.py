@@ -7,6 +7,9 @@ from http import server
 import datetime as dt
 from picamera import PiCamera
 from picamera import Color
+import os
+
+os.nice(10)
 
 PAGE="""\
 <html>

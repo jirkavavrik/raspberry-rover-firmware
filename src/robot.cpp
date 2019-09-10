@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
 				printf("message: %c\n", message);
 				switch(message){
-					case 'X': system("python3 /home/pi/raspberry-rover-firmware/src/webcamera.py &"); break;
+					case 'X': system("sudo -u pi python3 /home/pi/raspberry-rover-firmware/src/webcamera.py &"); break;
 					case 'x': system("pkill -15 -f ""webcamera.py"""); break;
 					
 					case '0': disconnect = 1; break;
