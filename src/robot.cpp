@@ -1,6 +1,6 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
-#include <softPwm.h>
+#include <wiringPiI2C.h>
 #include <ads1115.h>
 
 #include <stdio.h>
@@ -11,89 +11,50 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-
-#define FW true //dopředu
-#define BW false //dozadu
-
-unsigned char speednow = 50;
+int speed = 1000;
 
 int client_socket;
 
 int adc0input;
 float batteryVoltage;
-FILE *voltageFile;//
+FILE *voltageFile;
 
-void motorRight(unsigned char value, bool dir = FW) {
-	if(dir == FW)
-		digitalWrite(23, LOW);
-	else
-		digitalWrite(23, HIGH);
-    
-	if(dir == FW) {
-		if(value == 0)
-			softPwmWrite(24, 0);
-		else      
-			softPwmWrite(24, value); 
-	}
-	else
-		softPwmWrite(24, (100 - value)); //reverse value so 0 stays min and 100 stays max
+int fd;
+#define PCA9685_MODE1 0x0
+#define PCA9685_PRESCALE 0xFE
+#define LED0_ON_L 0x6
+#define LEDALL_ON_L 0xFA
+#define PIN_ALL 16
+
+void pca9685PWMFreq(int fd, float freq) {
+	// Cap at min and max
+	freq = (freq > 1000 ? 1000 : (freq < 40 ? 40 : freq));
+
+	//http://www.nxp.com/documents/data_sheet/PCA9685.pdf Page 24
+	int prescale = (int)(25000000.0f / (4096 * freq) - 0.5f);
+
+	int settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1) & 0x7F;
+	int sleep	= settings | 0x10;// Set sleep bit to 1
+	int wake 	= settings & 0xEF;// Set sleep bit to 0
+	int restart = wake | 0x80;// Set restart bit to 1
+
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, sleep);
+	wiringPiI2CWriteReg8(fd, PCA9685_PRESCALE, prescale);
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, wake);
+	delay(1);
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, restart);
 }
 
-void motorLeft(unsigned char value, bool dir = FW) {
-	if(dir == FW)
-		digitalWrite(21, LOW);
-	else
-		digitalWrite(21, HIGH);
-
-	if(dir == FW) {
-		if(value == 0)
-			softPwmWrite(22, 0);
-		else      
-			softPwmWrite(22, value*0.9);
-	}
-	else
-		softPwmWrite(22, 100 - value*0.9); //reverse value so 0 stays min and 100 stays max
-}
-
-void STOP() {
-	motorLeft(0, FW);
-	motorRight(0, FW);
-}
-
-void turnRight(unsigned char pwm) {
-	motorRight(0, FW);
-	motorLeft(pwm, FW); 
-}
-
-void turnLeft(unsigned char pwm) {
-	motorLeft(0, FW);
-	motorRight(pwm, FW); 
-}
-
-void goForward(unsigned char pwm) {
-	motorLeft(pwm, FW);
-	motorRight(pwm, FW);
-}
-
-void goBack (unsigned char pwm) {
-	digitalWrite(21, HIGH);//left
-	softPwmWrite(22, 100-pwm*0.9);
-	digitalWrite(23, HIGH);//right
-	softPwmWrite(24, 100-pwm);
-}
-
-void fw(unsigned char l, unsigned char r) {
-	motorLeft(l, FW);
-	motorRight(r, FW);
-}
-
-void bw(unsigned char l, unsigned char r){
-	motorLeft(l, BW);
-	motorRight(r, BW);
+void pca9685PWMWrite(int fd, int pin, int on, int off) {
+	int reg = (pin >= PIN_ALL ? LEDALL_ON_L : LED0_ON_L + 4 * pin);
+	// Write to on and off registers and mask the 12 lowest bits of data to overwrite full-on and off
+	wiringPiI2CWriteReg16(fd, reg	 , on  & 0x0FFF);
+	wiringPiI2CWriteReg16(fd, reg + 2, off & 0x0FFF);
 }
 
 void shutdown() {
-	STOP();
+	digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, 0);
+	digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, 0);
 	close(client_socket);
 	printf("client socket closed.\n");
 	system("sudo shutdown -h now &");
@@ -102,16 +63,28 @@ void shutdown() {
 int main(int argc, char *argv[]) {
 	wiringPiSetup();
 
+	//setup ads1115
 	ads1115Setup (120, 0x48);
 	digitalWrite(120,ADS1115_GAIN_4);
 	
+	//setup pca9685
+	fd = wiringPiI2CSetup(0x40);
+	if (fd < 0)	{
+		printf("Error in i2c setup\n");
+		return fd;
+	}
+	int settings = wiringPiI2CReadReg8(fd, PCA9685_MODE1) & 0x7F;
+	int autoInc = settings | 0x20;
+	wiringPiI2CWriteReg8(fd, PCA9685_MODE1, autoInc);
+	pca9685PWMFreq(fd, 500);
+
+	//daytime lights on
+	pca9685PWMWrite(fd, 2, 0, 100);
+	pca9685PWMWrite(fd, 3, 0, 100);
+	
 	//H-bridge pins
 	pinMode(21, OUTPUT);
-	pinMode(22, OUTPUT);
 	pinMode(23, OUTPUT);
-	pinMode(24, OUTPUT);
-	softPwmCreate (22, 0, 100);
-	softPwmCreate (24, 0, 100);
 	
 	//shutdown button
 	pinMode(29, INPUT);
@@ -161,39 +134,42 @@ int main(int argc, char *argv[]) {
 					case '0': disconnect = 1; break;
 					
 					case 'F': 
-						goForward(speednow); break;
-      
-					case 'G':
-						fw(speednow/2, speednow); break;
-		
-					case 'I':
-						fw(speednow, speednow/2); break;
-		
+						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, speed);
+						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, speed);
+						//goForward(); 
+						break;
+
 					case 'S':
-						STOP(); break;
+						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, 0);
+						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, 0);
+						//STOP(); 
+						break;
       
-					case 'L': 
-						turnLeft(speednow);  break;
+					case 'L':
+						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, 0);
+						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, speed);
+						//turnLeft();  
+						break;
       
 					case 'R': 
-						turnRight(speednow);  break;
+						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, speed);
+						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, 0);
+						//turnRight();
+						break;
       
 					case 'B': 
-						goBack(speednow); break;
-      
-					case 'H':
-						bw(speednow/2, speednow); break;
-				
-					case 'J':
-						bw(speednow, speednow/2);	break;
+						digitalWrite(21, HIGH); pca9685PWMWrite(fd, 0, 0, 4095 - speed);
+						digitalWrite(23, HIGH); pca9685PWMWrite(fd, 1, 0, 4095 - speed);
+						//goBack();
+						break;
 						
 					case '+':
-						if(speednow <=95)
-							speednow += 5;
+						if(speed <=3995)
+							speed += 100;
 						break;
 					case'-':
-						if(speednow >=5)
-							speednow -= 5;
+						if(speed >=100)
+							speed -= 100;
 						break;
 				}//end of switch
 				if(disconnect == 1) {

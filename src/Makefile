@@ -3,7 +3,7 @@
 # Date:		  10. 8. 2019
 
 CC=g++
-FLAGS=-lwiringPi -lpthread
+FLAGS=-lwiringPi
 EXE=robot
 
 main: robot.cpp
