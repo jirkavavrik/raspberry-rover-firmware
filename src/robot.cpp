@@ -132,6 +132,21 @@ int main(int argc, char *argv[]) {
 					case 'x': system("pkill -15 -f ""webcamera.py"""); break;
 					
 					case '0': disconnect = 1; break;
+
+					case 'a':
+						pca9685PWMWrite(fd, 2, 0, 0);
+						pca9685PWMWrite(fd, 3, 0, 0);
+						break;
+
+					case 'b':
+						pca9685PWMWrite(fd, 2, 0, 100);
+						pca9685PWMWrite(fd, 3, 0, 100);
+						break;
+
+					case 'c':
+						pca9685PWMWrite(fd, 2, 0, 2400);
+						pca9685PWMWrite(fd, 3, 0, 2400);
+						break;
 					
 					case 'F': 
 						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, speed);
