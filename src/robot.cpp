@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
 	pca9685PWMWrite(fd, 2, 0, 100);
 	pca9685PWMWrite(fd, 3, 0, 100);
 	
+
 	//H-bridge pins
 	pinMode(21, OUTPUT);
 	pinMode(23, OUTPUT);
@@ -98,6 +99,9 @@ int main(int argc, char *argv[]) {
 
 	if (argc < 2) {
 		fprintf(stderr,"ERROR, no port provided\n");
+		pca9685PWMWrite(fd, 4, 0, 1024);
+		pca9685PWMWrite(fd, 5, 0, 0);
+		pca9685PWMWrite(fd, 6, 0, 0);
 		exit(1);
      }
      
@@ -106,23 +110,44 @@ int main(int argc, char *argv[]) {
 	
 	//create socket, if unsuccessful, print error message
 	server_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_socket < 0) 
+	if (server_socket < 0)  {
 		fprintf(stderr, "ERROR opening socket\n");
+		pca9685PWMWrite(fd, 4, 0, 1024);
+		pca9685PWMWrite(fd, 5, 0, 0);
+		pca9685PWMWrite(fd, 6, 0, 0);
+	}
 	
 	//assign server address
 	server_address.sin_family = AF_INET;
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_port = htons(portno);
 	
-	if (bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) 
+	if (bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
 		fprintf(stderr, "ERROR on binding");
+		pca9685PWMWrite(fd, 4, 0, 1024);
+		pca9685PWMWrite(fd, 5, 0, 0);
+		pca9685PWMWrite(fd, 6, 0, 0);
+	}
+
+	//green info light
+	pca9685PWMWrite(fd, 4, 0, 0);
+	pca9685PWMWrite(fd, 5, 0, 512);
+	pca9685PWMWrite(fd, 6, 0, 0);
 
 	listen(server_socket,5);
 	while(true) {//network loop
 		disconnect = 0;
 		client_socket = accept(server_socket, NULL, NULL);
-		if (client_socket < 0) 
+		//blue info light
+		pca9685PWMWrite(fd, 4, 0, 0);
+		pca9685PWMWrite(fd, 5, 0, 0);
+		pca9685PWMWrite(fd, 6, 0, 512);
+		if (client_socket < 0) {
 			fprintf(stderr, "ERROR on accept");
+			pca9685PWMWrite(fd, 4, 0, 1024);
+			pca9685PWMWrite(fd, 5, 0, 0);
+			pca9685PWMWrite(fd, 6, 0, 0);
+		}
 	
 		while(true) {//control loop
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
@@ -188,6 +213,10 @@ int main(int argc, char *argv[]) {
 						break;
 				}//end of switch
 				if(disconnect == 1) {
+					//green info light
+					pca9685PWMWrite(fd, 4, 0, 0);
+					pca9685PWMWrite(fd, 5, 0, 512);
+					pca9685PWMWrite(fd, 6, 0, 0);
 					printf("disconnecting now...\n");break;
 				}			
 			}//end of if recv
