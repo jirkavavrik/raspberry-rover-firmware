@@ -66,7 +66,7 @@ int inline evaluateMessage(char m) {
 				switch(m){
 					case 'X': system("sudo -u pi python3 /home/pi/raspberry-rover-firmware/src/webcamera.py &"); break;
 					case 'x': system("pkill -15 -f ""webcamera.py"""); break;
-					
+
 					case '0': disconnect = 1; break;
 
 					case 'a':
@@ -83,37 +83,37 @@ int inline evaluateMessage(char m) {
 						pca9685PWMWrite(fd, 2, 0, 2400);
 						pca9685PWMWrite(fd, 3, 0, 2400);
 						break;
-					
-					case 'F': 
+
+					case 'F':
 						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, speed);
 						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, speed);
-						//goForward(); 
+						//goForward();
 						break;
 
 					case 'S':
 						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, 0);
 						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, 0);
-						//STOP(); 
+						//STOP();
 						break;
-      
+
 					case 'L':
 						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, 0);
 						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, speed);
-						//turnLeft();  
+						//turnLeft();
 						break;
-      
-					case 'R': 
+
+					case 'R':
 						digitalWrite(21, LOW); pca9685PWMWrite(fd, 0, 0, speed);
 						digitalWrite(23, LOW); pca9685PWMWrite(fd, 1, 0, 0);
 						//turnRight();
 						break;
-      
-					case 'B': 
+
+					case 'B':
 						digitalWrite(21, HIGH); pca9685PWMWrite(fd, 0, 0, 4095 - speed);
 						digitalWrite(23, HIGH); pca9685PWMWrite(fd, 1, 0, 4095 - speed);
 						//goBack();
 						break;
-						
+
 					case '+':
 						if(speed <=3995)
 							speed += 100;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 	//setup ads1115
 	ads1115Setup (120, 0x48);
 	digitalWrite(120,ADS1115_GAIN_4);
-	
+
 	//setup pca9685
 	fd = wiringPiI2CSetup(0x40);
 	if (fd < 0)	{
@@ -154,17 +154,16 @@ int main(int argc, char *argv[]) {
 	//daytime lights on
 	pca9685PWMWrite(fd, 2, 0, 100);
 	pca9685PWMWrite(fd, 3, 0, 100);
-	
 
 	//H-bridge pins
 	pinMode(21, OUTPUT);
 	pinMode(23, OUTPUT);
-	
+
 	//shutdown button
 	pinMode(29, INPUT);
 	pullUpDnControl (29, PUD_UP);
 	wiringPiISR (29, INT_EDGE_FALLING,  shutdown) ;
-	
+
 	char message;
 	int server_socket, client_socket, portno;
 	struct sockaddr_in server_address;
@@ -174,12 +173,12 @@ int main(int argc, char *argv[]) {
 		pca9685PWMWrite(fd, 4, 0, 1024);
 		pca9685PWMWrite(fd, 5, 0, 0);
 		pca9685PWMWrite(fd, 6, 0, 0);
-		exit(1);
+		exit(EXIT_FAILURE);
      }
-     
+
 	//parse port number
 	portno = atoi(argv[1]);
-	
+
 	//create socket, if unsuccessful, print error message
 	server_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_socket < 0)  {
@@ -187,18 +186,20 @@ int main(int argc, char *argv[]) {
 		pca9685PWMWrite(fd, 4, 0, 1024);
 		pca9685PWMWrite(fd, 5, 0, 0);
 		pca9685PWMWrite(fd, 6, 0, 0);
+		exit(EXIT_FAILURE);
 	}
-	
+
 	//assign server address
 	server_address.sin_family = AF_INET;
 	server_address.sin_addr.s_addr = INADDR_ANY;
 	server_address.sin_port = htons(portno);
-	
+
 	if (bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
 		fprintf(stderr, "ERROR on binding");
 		pca9685PWMWrite(fd, 4, 0, 1024);
 		pca9685PWMWrite(fd, 5, 0, 0);
 		pca9685PWMWrite(fd, 6, 0, 0);
+		exit(EXIT_FAILURE);
 	}
 
 	//green info light
@@ -220,7 +221,7 @@ int main(int argc, char *argv[]) {
 			pca9685PWMWrite(fd, 5, 0, 0);
 			pca9685PWMWrite(fd, 6, 0, 0);
 		}
-	
+
 		while(true) {//control loop
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
 				if(evaluateMessage(message) < 0)
@@ -236,7 +237,7 @@ int main(int argc, char *argv[]) {
 			char voltageString[10];
 			int n = sprintf(voltageString, "%.2f", batteryVoltage);
 			send(client_socket, voltageString, n, 0);
-			delay(100);	
+			delay(100);
 		}//end of control loop
 		close(client_socket);
 		printf("client socket closed.\n");
