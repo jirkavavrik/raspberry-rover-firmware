@@ -62,6 +62,7 @@ void shutdown() {
 }
 
 int inline evaluateMessage(char m) {
+	//print message to stdout
 	printf("message: %c\n", m);
 				switch(m){
 					case 'X': system("sudo -u pi python3 /home/pi/raspberry-rover-firmware/src/webcamera.py &"); break;
@@ -224,6 +225,8 @@ int main(int argc, char *argv[]) {
 
 		while(true) {//control loop
 			if(recv(client_socket, &message, sizeof(message),MSG_DONTWAIT) != -1) {
+				//send the message back to client
+				send(client_socket, &message, sizeof(message), 0);
 				if(evaluateMessage(message) < 0)
 					break;
 			}
@@ -234,9 +237,9 @@ int main(int argc, char *argv[]) {
 			fprintf(voltageFile, "%.2f", batteryVoltage);
 			fclose(voltageFile);
 
-			char voltageString[10];
-			int n = sprintf(voltageString, "%.2f", batteryVoltage);
-			send(client_socket, voltageString, n, 0);
+			//char voltageString[10];
+			//int n = sprintf(voltageString, "%.2f", batteryVoltage);
+			//send(client_socket, voltageString, n, 0);
 			delay(100);
 		}//end of control loop
 		close(client_socket);
