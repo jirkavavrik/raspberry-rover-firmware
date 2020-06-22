@@ -1,13 +1,13 @@
 # Project:	Raspberry Pi rover firmware
-# Autor:	  Jiří Vavřík
-# Date:		  10. 8. 2019
+# Autor:	Jiří Vavřík
+# Date:		22. 6. 2020
 
 CC=g++
 FLAGS=-lwiringPi
-EXE=robot
+EXE=rover
 
-main: robot.cpp
-	$(CC) robot.cpp $(FLAGS) -o $(EXE)
+main: rover.cpp
+	$(CC) rover.cpp $(FLAGS) -o $(EXE)
 
 run:
 	./$(EXE)
