@@ -27,6 +27,12 @@ int fd;
 #define LEDALL_ON_L 0xFA
 #define PIN_ALL 16
 
+enum {
+RED,
+GREEN,
+BLUE
+};
+
 void pca9685PWMFreq(int fd, float freq) {
 	// Cap at min and max
 	freq = (freq > 1000 ? 1000 : (freq < 40 ? 40 : freq));
@@ -59,6 +65,26 @@ void shutdown() {
 	close(client_socket);
 	printf("client socket closed.\n");
 	system("sudo shutdown -h now &");
+}
+
+void statusLED(int colour, int intensity) {
+	switch(colour){
+		case RED:
+			pca9685PWMWrite(fd, 4, 0, intensity);
+			pca9685PWMWrite(fd, 5, 0, 0);
+			pca9685PWMWrite(fd, 6, 0, 0);
+			break;
+		case GREEN:
+			pca9685PWMWrite(fd, 4, 0, 0);
+			pca9685PWMWrite(fd, 5, 0, intensity);
+			pca9685PWMWrite(fd, 6, 0, 0);
+			break;
+		case BLUE:
+			pca9685PWMWrite(fd, 4, 0, 0);
+			pca9685PWMWrite(fd, 5, 0, 0);
+			pca9685PWMWrite(fd, 6, 0, intensity);
+			break;
+	}
 }
 
 int inline evaluateMessage(char m) {
@@ -125,10 +151,7 @@ int inline evaluateMessage(char m) {
 						break;
 				}//end of switch
 				if(disconnect == 1) {
-					//green info light
-					pca9685PWMWrite(fd, 4, 0, 0);
-					pca9685PWMWrite(fd, 5, 0, 512);
-					pca9685PWMWrite(fd, 6, 0, 0);
+					statusLED(GREEN, 512);
 					printf("disconnecting now...\n");return -1;
 				}
 	return 0;
@@ -171,9 +194,7 @@ int main(int argc, char *argv[]) {
 
 	if (argc < 2) {
 		fprintf(stderr,"ERROR, no port provided\n");
-		pca9685PWMWrite(fd, 4, 0, 1024);
-		pca9685PWMWrite(fd, 5, 0, 0);
-		pca9685PWMWrite(fd, 6, 0, 0);
+		statusLED(RED, 512);
 		exit(EXIT_FAILURE);
      }
 
@@ -184,9 +205,7 @@ int main(int argc, char *argv[]) {
 	server_socket = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_socket < 0)  {
 		fprintf(stderr, "ERROR opening socket\n");
-		pca9685PWMWrite(fd, 4, 0, 1024);
-		pca9685PWMWrite(fd, 5, 0, 0);
-		pca9685PWMWrite(fd, 6, 0, 0);
+		statusLED(RED, 512);
 		exit(EXIT_FAILURE);
 	}
 
@@ -197,30 +216,20 @@ int main(int argc, char *argv[]) {
 
 	if (bind(server_socket, (struct sockaddr *) &server_address, sizeof(server_address)) < 0) {
 		fprintf(stderr, "ERROR on binding");
-		pca9685PWMWrite(fd, 4, 0, 1024);
-		pca9685PWMWrite(fd, 5, 0, 0);
-		pca9685PWMWrite(fd, 6, 0, 0);
+		statusLED(RED, 512);
 		exit(EXIT_FAILURE);
 	}
 
-	//green info light
-	pca9685PWMWrite(fd, 4, 0, 0);
-	pca9685PWMWrite(fd, 5, 0, 512);
-	pca9685PWMWrite(fd, 6, 0, 0);
+	statusLED(GREEN, 512);
 
 	listen(server_socket,5);
 	while(true) {//network loop
 		disconnect = 0;
 		client_socket = accept(server_socket, NULL, NULL);
-		//blue info light
-		pca9685PWMWrite(fd, 4, 0, 0);
-		pca9685PWMWrite(fd, 5, 0, 0);
-		pca9685PWMWrite(fd, 6, 0, 512);
+		statusLED(BLUE, 512);
 		if (client_socket < 0) {
 			fprintf(stderr, "ERROR on accept");
-			pca9685PWMWrite(fd, 4, 0, 1024);
-			pca9685PWMWrite(fd, 5, 0, 0);
-			pca9685PWMWrite(fd, 6, 0, 0);
+			statusLED(RED, 512);
 		}
 
 		while(true) {//control loop
