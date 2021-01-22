@@ -4,7 +4,7 @@
 
 CC=g++
 FLAGS=-lwiringPi
-EXE=rover
+EXE=rover.out
 
 main: rover.cpp
 	$(CC) rover.cpp $(FLAGS) -o $(EXE)
